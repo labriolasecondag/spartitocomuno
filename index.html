@@ -327,7 +327,7 @@ $('play').onclick = () => {
   else ref.update({ running: true, t0: firebase.database.ServerValue.TIMESTAMP, p0: st.p0 >= 1 ? 0 : st.p0 });
 };
 // velocità: scala logaritmica, destra = più veloce (durata 10:00 → 0:45)
-const DMAX = 600, DMIN = 45, TS = firebase.database.ServerValue.TIMESTAMP;
+const DMAX = 1200, DMIN = 45, TS = firebase.database.ServerValue.TIMESTAMP;
 const v2d = v => Math.round(DMAX * Math.pow(DMIN / DMAX, v / 100));
 const d2v = d => Math.round(100 * Math.log(DMAX / Math.max(DMIN, Math.min(DMAX, d))) / Math.log(DMAX / DMIN));
 let sliding = false, lastSend = 0;
