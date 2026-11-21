@@ -185,7 +185,7 @@ const songList = v => Object.entries(v.songs || {}).sort((a, b) => (a[1].o || 0)
 let shown = '', shownV = '', showCh = localStorage.getItem('sc_ch') !== '0';
 
 // ---- accordi: riconoscimento, conversione in [Am] inline, trasposizione, resa ----
-const R = '(?:Do|Re|Mi|Fa(?!dd|ug)|Sol|La|Si|[A-G])';
+const R = '(?:DO|Do|RE|Re|MI|Mi|FA(?!DD|UG)|Fa(?!dd|ug)|SOL|Sol|LA|La|SI|Si|[A-G])';
 const CH = new RegExp('^' + R + '[#b♯♭]?(?:maj|min|dim|aug|sus|add|m|M|\\+|°|ø|-|\\d|[#b]|\\([^)]*\\))*(?:\\/' + R + '[#b♯♭]?)?$');
 const isChord = t => CH.test(t);
 const FILL = /^(\||\/|-|x\d+|\d+x)$/;
@@ -214,9 +214,13 @@ const NAMES = {
   it: [['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'], ['Do','Reb','Re','Mib','Mi','Fa','Solb','Sol','Lab','La','Sib','Si']]
 };
 function note(r, a, n) {
+  const k = r.length > 1 ? r[0] + r.slice(1).toLowerCase() : r, up = r.length > 1 && r === r.toUpperCase();
   const acc = (a === '#' || a === '♯') ? 1 : (a === 'b' || a === '♭') ? -1 : 0;
-  const idx = (((BASE[r] + acc + n) % 12) + 12) % 12;
-  return NAMES[r.length > 1 ? 'it' : 'en'][acc < 0 ? 1 : 0][idx];
+  const idx = (((BASE[k] + acc + n) % 12) + 12) % 12;
+  const nm = NAMES[k.length > 1 ? 'it' : 'en'][acc < 0 ? 1 : 0][idx];
+  if (!up) return nm;
+  const root = nm.replace(/[#b]$/, '');
+  return root.toUpperCase() + nm.slice(root.length);
 }
 function tpose(c, n) {
   const m = c.match(new RegExp('^(' + R + ')([#b♯♭]?)(.*?)(?:\\/(' + R + ')([#b♯♭]?))?$'));
@@ -247,7 +251,7 @@ function renderLyrics(x, n, show) {
 const hasChords = x => (x.match(/\[([^\]]+)\]/g) || []).some(g => isChord(g.slice(1, -1)));
 function render() {
   const sg = songOf(st);
-  const x = sg ? sg.x : '', k1 = (st.cur || '') + '|' + x, tr = st.tr || 0;
+  const x = sg ? toInline(sg.x) : '', k1 = (st.cur || '') + '|' + x, tr = st.tr || 0;
   if (k1 !== shown) { shown = k1; $('rt').textContent = sg ? sg.t : 'Nessun brano'; stage.scrollTop = 0; }
   const k2 = k1 + '|' + tr + '|' + showCh;
   if (k2 !== shownV) { shownV = k2; renderLyrics(x, tr, showCh); }
