@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0d0c">
+<title>Spartitocomune</title>
+<style>
+:root{--bg:#0e0d0c;--fg:#f1ece2;--mut:#8d867a;--acc:#f2b84b;--line:#2a2724;--sz:30px}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif}
+button,input,textarea{font:inherit;color:inherit}
+.screen{display:none;height:100%;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom)}
+.screen.on{display:flex;flex-direction:column}
+#home{justify-content:center;gap:14px;max-width:460px;margin:0 auto}
+h1{font-size:2.2rem;margin:0 0 4px;font-weight:700;letter-spacing:-.01em}
+p.sub{margin:0 0 14px;color:var(--mut);line-height:1.4}
+input,textarea{background:#171513;border:1px solid var(--line);border-radius:10px;padding:12px 14px;width:100%}
+textarea{min-height:34vh;resize:vertical;line-height:1.5}
+.btn{background:var(--acc);color:#1a1405;border:0;border-radius:10px;padding:13px 16px;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.row{display:flex;gap:10px;align-items:center}
+.row>*{flex:1}
+#code{text-transform:uppercase;letter-spacing:.3em;text-align:center}
+#err{color:#ff8a7a;min-height:1.2em;font-size:.9rem}
+/* stage */
+#top{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.9rem;color:var(--mut)}
+#top{flex-wrap:wrap;row-gap:6px}
+#top #leave{margin-right:auto}
+#tl{flex:0 0 100%;display:flex;gap:10px;align-items:baseline;min-width:0}
+#trv{color:var(--acc);font-weight:700}
+.ln{min-height:1.45em}
+.seg{display:inline-flex;flex-direction:column;vertical-align:top;white-space:pre}
+.seg .ch{color:var(--acc);font-weight:700;font-size:.82em;line-height:1.3;min-height:1.3em;padding-right:.45em}
+.seg .tx{min-height:1.45em;white-space:pre}
+#tl b{color:var(--fg);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:1.05rem}
+#top button{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+#stage{flex:1;overflow-y:scroll;position:relative;scrollbar-width:none;overscroll-behavior:contain}
+#stage::-webkit-scrollbar{display:none}
+#txt{font-size:var(--sz);line-height:1.45;white-space:pre-wrap;padding:42vh 4px}
+#mark{position:absolute;left:0;right:0;top:42%;height:0;border-top:1px dashed #f2b84b55;pointer-events:none}
+#stageWrap{flex:1;position:relative;display:flex;min-height:0}
+#stageWrap #stage{flex:1}
+#ctl{display:none;gap:10px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+#ctl.on{display:flex}
+#ctl .btn{flex:0 0 auto;min-width:92px}
+#ctl label{flex:1;font-size:.8rem;color:var(--mut);display:flex;flex-direction:column;gap:4px}
+#resync{display:none;position:absolute;right:8px;bottom:8px}
+#resync.on{display:block}
+#ctl{flex-wrap:wrap}
+#sheet{position:fixed;inset:0;background:#0e0d0cf5;display:none;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 14px);z-index:5;overflow:auto}
+#sheet.on{display:block}
+#sheet .wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.song{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#171513}
+.song.cur{border-color:var(--acc)}
+.song span{flex:1}
+.song button{background:none;border:0;color:var(--mut);padding:4px 8px;cursor:pointer}
+#addbox{display:none;flex-direction:column;gap:10px}
+#addbox.host{display:flex}
+#addbox textarea{min-height:22vh}
+select{background:#171513;border:1px solid var(--line);border-radius:10px;padding:12px 14px;width:100%;font:inherit;color:var(--mut)}
+@media(prefers-reduced-motion:no-preference){.btn{transition:transform .08s}.btn:active{transform:scale(.97)}}
+</style>
+</head>
+<body>
+
+<section id="home" class="screen on">
+  <h1>Spartitocomune</h1>
+  <p class="sub">Lo stesso testo, scorrevole in sincrono su tutti i telefoni della stanza.</p>
+  <button class="btn" id="goCreate">Crea una stanza</button>
+  <button class="btn ghost" id="goArch">Archivio e scalette</button>
+  <div class="row">
+    <input id="code" maxlength="4" placeholder="CODICE" autocomplete="off">
+    <button class="btn ghost" id="goJoin">Entra</button>
+  </div>
+  <div id="err"></div>
+  <div id="mine" style="display:none;flex-direction:column;gap:8px"><p class="sub" style="margin:8px 0 0">Le tue stanze</p><div id="mlist" style="display:flex;flex-direction:column;gap:8px"></div></div>
+</section>
+
+<section id="create" class="screen">
+  <div style="max-width:560px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:12px;padding:14px 0;overflow:auto">
+    <h1 style="font-size:1.6rem">Nuova canzone</h1>
+    <select id="libsel"></select>
+    <input id="title" placeholder="Titolo">
+    <textarea id="lyrics" placeholder="Incolla qui il testo (anche con gli accordi sopra le parole, o scritti tra [ ])"></textarea>
+    <div class="row">
+      <button class="btn ghost" id="back">Indietro</button>
+      <button class="btn" id="make">Crea stanza</button>
+    </div>
+    <div id="err2" style="color:#ff8a7a"></div>
+  </div>
+</section>
+
+<section id="arch" class="screen">
+  <div style="max-width:560px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:12px;padding:14px 0;overflow:auto">
+    <div class="row"><h1 style="font-size:1.6rem;flex:1">Archivio</h1><button class="btn ghost" id="archBack" style="flex:0 0 auto">Home</button></div>
+    <p class="sub" id="archInfo"></p>
+    <div class="row"><input id="archCode" maxlength="5" placeholder="Usa un altro codice" style="text-transform:uppercase"><button class="btn ghost" id="archJoin" style="flex:0 0 auto">Usa</button></div>
+    <p class="sub" style="margin:6px 0 0">Brani (spunta nell’ordine di esecuzione per fare una scaletta)</p>
+    <div id="aSongs" style="display:flex;flex-direction:column;gap:8px"></div>
+    <button class="btn" id="newSet">Crea scaletta dai brani spuntati</button>
+    <p class="sub" style="margin:6px 0 0">Scalette</p>
+    <div id="aSets" style="display:flex;flex-direction:column;gap:8px"></div>
+    <p class="sub" style="margin:6px 0 0">Aggiungi un brano</p>
+    <input id="aT" placeholder="Titolo"><textarea id="aX" style="min-height:18vh" placeholder="Testo"></textarea>
+    <button class="btn ghost" id="aAdd">Salva nell’archivio</button>
+  </div>
+</section>
+
+<section id="room" class="screen">
+  <div id="top">
+    <button id="leave">Home</button>
+    <button id="list">Scaletta</button>
+    <button id="share">Condividi</button>
+    <button id="fm">A−</button>
+    <button id="fp">A+</button>
+    <div id="tl"><span id="rc"></span><b id="rt"></b><span id="trv"></span><button id="chtog">Accordi</button></div>
+  </div>
+  <div id="stageWrap">
+    <div id="stage"><div id="txt"></div></div>
+    <div id="mark"></div>
+    <button class="btn" id="resync">Riallinea</button>
+  </div>
+  <div id="ctl">
+    <button class="btn" id="play">Avvia</button>
+    <label>Velocità · durata <span id="dv"></span>
+      <input type="range" id="dur" min="0" max="100" step="1" value="35">
+    </label>
+    <button class="btn ghost" id="rew" style="flex:0 0 auto">Da capo</button>
+    <button class="btn ghost" id="next" style="flex:0 0 auto">Succ.</button>
+    <button class="btn ghost" id="trm" style="flex:0 0 auto">Tono −</button>
+    <button class="btn ghost" id="trp" style="flex:0 0 auto">Tono +</button>
+  </div>
+</section>
+
+<div id="sheet"><div class="wrap">
+  <div class="row"><h1 style="font-size:1.5rem;flex:1">Scaletta</h1><button class="btn ghost" id="closeSheet" style="flex:0 0 auto">Chiudi</button></div>
+  <div id="songs" style="display:flex;flex-direction:column;gap:8px"></div>
+  <div id="addbox"><select id="setsel"></select><select id="libsel2"></select><input id="nt" placeholder="Titolo del brano"><textarea id="nx" placeholder="Incolla il testo (anche con accordi)"></textarea><button class="btn" id="addSong">Aggiungi alla scaletta</button></div>
+</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBsB6MHZtZXk-1XTGuqJpROCGc9-KTy6pU",
+  authDomain: "studyshare-3d5f9.firebaseapp.com",
+  databaseURL: "https://studyshare-3d5f9-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "studyshare-3d5f9",
+  storageBucket: "studyshare-3d5f9.firebasestorage.app",
+  messagingSenderId: "801438647195",
+  appId: "1:801438647195:web:4424458a5d1c238c05973e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const $ = id => document.getElementById(id);
+const show = id => { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); };
+
+let offset = 0;                       // scarto orologio locale -> server
+db.ref('.info/serverTimeOffset').on('value', s => offset = s.val() || 0);
+const now = () => Date.now() + offset;
+
+let code = null, ref = null, st = null, isHost = false, follow = true, raf = 0, touching = false;
+const stage = $('stage');
+
+const mkCode = (n = 4) => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let c = ''; for (let i = 0; i < n; i++) c += a[Math.floor(Math.random() * a.length)]; return c; };
+const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+
+// posizione corrente (0..1) calcolata dall'ancora scritta dal host
+function pos() {
+  if (!st) return 0;
+  if (!st.running) return st.p0 || 0;
+  return Math.min(1, (st.p0 || 0) + (now() - st.t0) / 1000 / st.dur);
+}
+function apply() {
+  if (st && follow && !touching) {
+    const max = stage.scrollHeight - stage.clientHeight;
+    stage.scrollTop = pos() * max;
+  }
+  raf = requestAnimationFrame(apply);
+}
+
+const songOf = v => (v.songs && v.songs[v.cur]) || (v.text ? { t: v.title, x: v.text } : null);
+const songList = v => Object.entries(v.songs || {}).sort((a, b) => (a[1].o || 0) - (b[1].o || 0));
+let shown = '', shownV = '', showCh = localStorage.getItem('sc_ch') !== '0';
+
+// ---- accordi: riconoscimento, conversione in [Am] inline, trasposizione, resa ----
+const R = '(?:Do|Re|Mi|Fa(?!dd|ug)|Sol|La|Si|[A-G])';
+const CH = new RegExp('^' + R + '[#b♯♭]?(?:maj|min|dim|aug|sus|add|m|M|\\+|°|ø|-|\\d|[#b]|\\([^)]*\\))*(?:\\/' + R + '[#b♯♭]?)?$');
+const isChord = t => CH.test(t);
+const FILL = /^(\||\/|-|x\d+|\d+x)$/;
+function toInline(raw) {
+  const L = raw.replace(/\u00a0/g, ' ').replace(/\r/g, '').replace(/\t/g, '    ').split('\n');
+  const isCL = l => { const tk = l.trim().split(/\s+/); return l.trim() !== '' && tk.some(isChord) && tk.every(t => isChord(t) || FILL.test(t)); };
+  const out = [];
+  for (let i = 0; i < L.length; i++) {
+    const l = L[i];
+    if (!isCL(l)) { out.push(l); continue; }
+    const nx = L[i + 1];
+    if (nx !== undefined && nx.trim() !== '' && !isCL(nx) && !/^\s*\[[^\]]+\]\s*$/.test(nx)) {
+      let ly = nx;
+      [...l.matchAll(/\S+/g)].filter(m => isChord(m[0])).reverse().forEach(m => {
+        if (ly.length < m.index) ly = ly.padEnd(m.index, ' ');
+        ly = ly.slice(0, m.index) + '[' + m[0] + ']' + ly.slice(m.index);
+      });
+      out.push(ly); i++;
+    } else out.push(l.replace(/\S+/g, t => isChord(t) ? '[' + t + ']' : t));
+  }
+  return out.join('\n').replace(/^(\s*\n)+/, '').replace(/\s+$/, '');
+}
+const BASE = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11, Do: 0, Re: 2, Mi: 4, Fa: 5, Sol: 7, La: 9, Si: 11 };
+const NAMES = {
+  en: [['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'], ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B']],
+  it: [['Do','Do#','Re','Re#','Mi','Fa','Fa#','Sol','Sol#','La','La#','Si'], ['Do','Reb','Re','Mib','Mi','Fa','Solb','Sol','Lab','La','Sib','Si']]
+};
+function note(r, a, n) {
+  const acc = (a === '#' || a === '♯') ? 1 : (a === 'b' || a === '♭') ? -1 : 0;
+  const idx = (((BASE[r] + acc + n) % 12) + 12) % 12;
+  return NAMES[r.length > 1 ? 'it' : 'en'][acc < 0 ? 1 : 0][idx];
+}
+function tpose(c, n) {
+  const m = c.match(new RegExp('^(' + R + ')([#b♯♭]?)(.*?)(?:\\/(' + R + ')([#b♯♭]?))?$'));
+  return m ? note(m[1], m[2], n) + m[3] + (m[4] ? '/' + note(m[4], m[5], n) : '') : c;
+}
+function renderLyrics(x, n, show) {
+  const frag = document.createDocumentFragment();
+  x.split('\n').forEach(line => {
+    const d = document.createElement('div'); d.className = 'ln';
+    const re = /\[([^\]]+)\]/g, segs = []; let m, last = 0, pend = null;
+    while ((m = re.exec(line))) {
+      if (!isChord(m[1])) continue;
+      if (pend !== null || m.index > last) segs.push({ c: pend, t: line.slice(last, m.index) });
+      pend = m[1]; last = m.index + m[0].length;
+    }
+    segs.push({ c: pend, t: line.slice(last) });
+    if (!show || pend === null && segs.length === 1) d.textContent = segs.map(g => g.t).join('') || '\u200b';
+    else segs.forEach(g => {
+      const e = document.createElement('span'); e.className = 'seg';
+      const a = document.createElement('span'); a.className = 'ch'; a.textContent = g.c === null ? '' : (n ? tpose(g.c, n) : g.c);
+      const b = document.createElement('span'); b.className = 'tx'; b.textContent = g.t;
+      e.append(a, b); d.appendChild(e);
+    });
+    frag.appendChild(d);
+  });
+  const box = $('txt'); box.textContent = ''; box.appendChild(frag);
+}
+const hasChords = x => (x.match(/\[([^\]]+)\]/g) || []).some(g => isChord(g.slice(1, -1)));
+function render() {
+  const sg = songOf(st);
+  const x = sg ? sg.x : '', k1 = (st.cur || '') + '|' + x, tr = st.tr || 0;
+  if (k1 !== shown) { shown = k1; $('rt').textContent = sg ? sg.t : 'Nessun brano'; stage.scrollTop = 0; }
+  const k2 = k1 + '|' + tr + '|' + showCh;
+  if (k2 !== shownV) { shownV = k2; renderLyrics(x, tr, showCh); }
+  const hc = hasChords(x);
+  $('chtog').style.display = hc ? '' : 'none'; $('chtog').style.opacity = showCh ? 1 : .5;
+  $('trv').textContent = hc && tr ? (tr > 0 ? '+' : '') + tr : '';
+  $('play').textContent = st.running ? 'Pausa' : 'Avvia';
+  if (!sliding) { $('dur').value = d2v(st.dur); $('dv').textContent = fmt(st.dur); }
+  $('addbox').classList.toggle('host', isHost);
+  const box = $('songs'); box.innerHTML = '';
+  songList(st).forEach(([id, sn]) => {
+    const d = document.createElement('div'); d.className = 'song' + (id === st.cur ? ' cur' : '');
+    const n = document.createElement('span'); n.textContent = sn.t; d.appendChild(n);
+    if (isHost) {
+      d.style.cursor = 'pointer'; d.onclick = () => { pick(id); $('sheet').classList.remove('on'); };
+      const x = document.createElement('button'); x.textContent = 'Elimina';
+      x.onclick = e => { e.stopPropagation(); del(id); }; d.appendChild(x);
+    }
+    box.appendChild(d);
+  });
+}
+const pick = id => ref.update({ cur: id, running: false, p0: 0, tr: 0 });
+function del(id) {
+  if (!confirm('Eliminare questo brano dalla scaletta?')) return;
+  const rest = songList(st).map(e => e[0]).filter(i => i !== id), u = {};
+  u['songs/' + id] = null;
+  if (id === st.cur) { u.cur = rest[0] || null; u.running = false; u.p0 = 0; u.tr = 0; }
+  ref.update(u);
+}
+
+function enter(c) {
+  code = c; ref = db.ref('spartitocomune/rooms/' + c);
+  isHost = localStorage.getItem('sc_host_' + c) === '1';
+  $('rc').textContent = c;
+  $('ctl').classList.toggle('on', isHost);
+  location.hash = c;
+  show('room');
+  ref.on('value', s => { const v = s.val(); if (!v) return; st = v; render(); });
+  cancelAnimationFrame(raf); apply();
+}
+
+$('goCreate').onclick = () => show('create');
+$('back').onclick = () => { fillRooms(); show('home'); };
+
+$('make').onclick = async () => {
+  const text = toInline($('lyrics').value);
+  if (!text) { $('err2').textContent = 'Incolla prima il testo.'; return; }
+  const c = mkCode();
+  const data = { songs: { s1: { t: $('title').value.trim() || 'Senza titolo', x: text, o: Date.now() } }, cur: 's1', running: false, t0: 0, p0: 0, dur: 240, created: firebase.database.ServerValue.TIMESTAMP };
+  try { await db.ref('spartitocomune/rooms/' + c).set(data); }
+  catch (e) { $('err2').textContent = 'Impossibile creare la stanza: controlla config e regole Firebase.'; return; }
+  localStorage.setItem('sc_host_' + c, '1');
+  roomSave(c, data.songs.s1.t); libSave(data.songs.s1.t, text);
+  enter(c, data);
+};
+
+async function join(c) {
+  c = (c || '').toUpperCase().trim();
+  if (c.length !== 4) { $('err').textContent = 'Il codice ha 4 caratteri.'; return; }
+  try {
+    const s = await db.ref('spartitocomune/rooms/' + c).get();
+    if (!s.exists()) { $('err').textContent = 'Stanza non trovata.'; return; }
+    enter(c, s.val());
+  } catch (e) { $('err').textContent = 'Errore di connessione.'; }
+}
+$('goJoin').onclick = () => join($('code').value);
+$('code').addEventListener('keydown', e => { if (e.key === 'Enter') join($('code').value); });
+
+// controlli host
+$('play').onclick = () => {
+  if (!isHost || !st) return;
+  if (st.running) ref.update({ running: false, p0: pos() });
+  else ref.update({ running: true, t0: firebase.database.ServerValue.TIMESTAMP, p0: st.p0 >= 1 ? 0 : st.p0 });
+};
+// velocità: scala logaritmica, destra = più veloce (durata 10:00 → 0:45)
+const DMAX = 600, DMIN = 45, TS = firebase.database.ServerValue.TIMESTAMP;
+const v2d = v => Math.round(DMAX * Math.pow(DMIN / DMAX, v / 100));
+const d2v = d => Math.round(100 * Math.log(DMAX / Math.max(DMIN, Math.min(DMAX, d))) / Math.log(DMAX / DMIN));
+let sliding = false, lastSend = 0;
+const sendDur = () => { const d = v2d(+$('dur').value); ref.update(st.running ? { dur: d, p0: pos(), t0: TS } : { dur: d }); };
+$('dur').oninput = e => { sliding = true; $('dv').textContent = fmt(v2d(+e.target.value)); const n = Date.now(); if (isHost && n - lastSend > 250) { lastSend = n; sendDur(); } };
+$('dur').onchange = () => { if (isHost) sendDur(); sliding = false; };
+$('rew').onclick = () => isHost && ref.update({ running: false, p0: 0 });
+
+$('list').onclick = () => $('sheet').classList.add('on');
+$('closeSheet').onclick = () => $('sheet').classList.remove('on');
+$('addSong').onclick = async () => {
+  const t = $('nt').value.trim() || 'Senza titolo', x = toInline($('nx').value); if (!x || !isHost) return;
+  const k = ref.child('songs').push().key, u = {};
+  u['songs/' + k] = { t, x, o: Date.now() };
+  if (!songOf(st) || !st.cur) u.cur = k;
+  await ref.update(u); libSave(t, x); $('nt').value = ''; $('nx').value = ''; $('libsel2').value = '';
+};
+$('next').onclick = () => {
+  if (!isHost) return;
+  const ids = songList(st).map(e => e[0]), i = ids.indexOf(st.cur);
+  if (ids[i + 1]) pick(ids[i + 1]);
+};
+
+// scroll manuale del singolo: sgancia, poi "Riallinea"
+stage.addEventListener('touchstart', () => { touching = true; });
+stage.addEventListener('touchend', () => { touching = false; if (st && st.running) { follow = false; $('resync').classList.add('on'); } });
+stage.addEventListener('wheel', () => { if (st && st.running) { follow = false; $('resync').classList.add('on'); } }, { passive: true });
+$('resync').onclick = () => { follow = true; $('resync').classList.remove('on'); };
+
+// dimensione testo (solo sul proprio dispositivo)
+let sz = +localStorage.getItem('sc_sz') || 30;
+const setSz = n => { sz = Math.max(18, Math.min(64, n)); document.documentElement.style.setProperty('--sz', sz + 'px'); localStorage.setItem('sc_sz', sz); };
+setSz(sz);
+$('fm').onclick = () => setSz(sz - 3);
+$('fp').onclick = () => setSz(sz + 3);
+
+$('share').onclick = async () => {
+  const url = location.href.split('#')[0] + '#' + code;
+  try { if (navigator.share) await navigator.share({ title: 'Spartitocomune', text: 'Entra nella stanza ' + code, url }); else { await navigator.clipboard.writeText(url); $('share').textContent = 'Copiato'; setTimeout(() => $('share').textContent = 'Condividi', 1500); } } catch (e) {}
+};
+
+// schermo sempre acceso durante la prova
+let wl; const keepAwake = async () => { try { wl = await navigator.wakeLock.request('screen'); } catch (e) {} };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && code) keepAwake(); });
+$('goCreate').addEventListener('click', keepAwake); $('goJoin').addEventListener('click', keepAwake);
+
+// archivio locale dei brani e delle stanze (restano sul dispositivo)
+const jget = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } };
+const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let LC = localStorage.getItem('sc_lc') || '', lib = { songs: {}, sets: {} }, libRef = null, sel = [];
+const sortedSongs = () => Object.entries(lib.songs).sort((a, b) => (b[1].o || 0) - (a[1].o || 0));
+function libConnect(c) {
+  if (libRef) libRef.off();
+  LC = c; localStorage.setItem('sc_lc', c);
+  libRef = db.ref('spartitocomune/lib/' + c);
+  libRef.on('value', sn => { const v = sn.val() || {}; lib = { songs: v.songs || {}, sets: v.sets || {} }; fillLib(); renderArch(); });
+}
+function ensureLib() {
+  if (LC) return;
+  libConnect(mkCode(5));
+  jget('sc_lib').forEach(sg => libRef.child('songs').push({ t: sg.t, x: sg.x, o: Date.now() }));
+}
+function libSave(t, x) {
+  ensureLib();
+  if (Object.values(lib.songs).some(o => o.t === t && o.x === x)) return;
+  libRef.child('songs').push({ t, x, o: Date.now() });
+}
+const opt = (el, v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); };
+function fillLib() {
+  const l = sortedSongs();
+  ['libsel', 'libsel2'].forEach(id => {
+    const el = $(id); el.innerHTML = '';
+    opt(el, '', l.length ? 'Dall’archivio (' + l.length + ' brani)…' : 'Archivio vuoto');
+    l.forEach(([k, sg]) => opt(el, k, sg.t));
+  });
+  const el = $('setsel'); el.innerHTML = ''; opt(el, '', 'Carica una scaletta dall’archivio…');
+  Object.entries(lib.sets).forEach(([k, sc]) => opt(el, k, sc.n + ' (' + (sc.i || []).length + ' brani)'));
+}
+function row(label, onDel, check) {
+  const d = document.createElement(check ? 'label' : 'div'); d.className = 'song';
+  if (check) d.appendChild(check);
+  const n = document.createElement('span'); n.textContent = label; d.appendChild(n);
+  const x = document.createElement('button'); x.textContent = 'Elimina'; x.onclick = e => { e.preventDefault(); if (confirm('Eliminare dall’archivio?')) onDel(); }; d.appendChild(x);
+  return d;
+}
+function renderArch() {
+  $('archInfo').textContent = LC ? 'Codice archivio: ' + LC + ' — chi lo inserisce usa gli stessi brani e le stesse scalette.' : 'Nessun archivio ancora: salva un brano per crearne uno.';
+  const sb = $('aSongs'); sb.innerHTML = '';
+  sortedSongs().forEach(([k, sg]) => {
+    const c = document.createElement('input'); c.type = 'checkbox'; c.style.width = 'auto'; c.checked = sel.includes(k);
+    c.onchange = () => { sel = c.checked ? sel.concat(k) : sel.filter(i => i !== k); };
+    sb.appendChild(row(sg.t, () => libRef.child('songs/' + k).remove(), c));
+  });
+  const ss = $('aSets'); ss.innerHTML = '';
+  Object.entries(lib.sets).forEach(([k, sc]) => ss.appendChild(row(sc.n + ' · ' + (sc.i || []).length + ' brani', () => libRef.child('sets/' + k).remove())));
+}
+$('goArch').onclick = () => { renderArch(); show('arch'); };
+$('archBack').onclick = () => { fillRooms(); show('home'); };
+$('archJoin').onclick = () => { const c = $('archCode').value.toUpperCase().trim(); if (c.length === 5) { sel = []; libConnect(c); $('archCode').value = ''; } };
+$('aAdd').onclick = () => { const t = $('aT').value.trim() || 'Senza titolo', x = toInline($('aX').value); if (!x) return; libSave(t, x); $('aT').value = ''; $('aX').value = ''; };
+$('newSet').onclick = () => {
+  if (!sel.length) { alert('Spunta prima i brani, nell’ordine in cui vanno suonati.'); return; }
+  const n = prompt('Nome della scaletta?'); if (!n) return;
+  ensureLib(); libRef.child('sets').push({ n: n.trim(), i: sel }); sel = []; renderArch();
+};
+$('libsel').onchange = e => { const sg = lib.songs[e.target.value]; if (sg) { $('title').value = sg.t; $('lyrics').value = sg.x; } };
+$('libsel2').onchange = e => { const sg = lib.songs[e.target.value]; if (sg) { $('nt').value = sg.t; $('nx').value = sg.x; } };
+$('setsel').onchange = async e => {
+  const sc = lib.sets[e.target.value]; e.target.value = '';
+  if (!sc || !isHost) return;
+  const u = {}, base = Date.now(); let first = null;
+  (sc.i || []).forEach((id, n) => {
+    const sg = lib.songs[id]; if (!sg) return;
+    const k = ref.child('songs').push().key; u['songs/' + k] = { t: sg.t, x: sg.x, o: base + n }; if (!first) first = k;
+  });
+  if (first && (!songOf(st) || !st.cur)) u.cur = first;
+  if (Object.keys(u).length) await ref.update(u);
+};
+
+function roomSave(c, t) { const l = jget('sc_rooms').filter(r => r.c !== c); l.unshift({ c, t }); jset('sc_rooms', l.slice(0, 8)); }
+function fillRooms() {
+  const known = jget('sc_rooms'), seen = new Set(known.map(r => r.c)), l = known.slice();
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('sc_host_') && !seen.has(k.slice(8))) l.push({ c: k.slice(8), t: '' }); } } catch (e) {}
+  const mine = l.filter(r => localStorage.getItem('sc_host_' + r.c) === '1');
+  $('mine').style.display = mine.length ? 'flex' : 'none';
+  const b = $('mlist'); b.innerHTML = '';
+  mine.forEach(r => { const bt = document.createElement('button'); bt.className = 'btn ghost'; bt.style.textAlign = 'left'; bt.textContent = r.c + (r.t ? ' · ' + r.t : ''); bt.onclick = () => join(r.c); b.appendChild(bt); });
+}
+if (LC) libConnect(LC); else fillLib();
+fillRooms();
+
+const shiftTone = d => { if (!isHost || !st) return; let t = (st.tr || 0) + d; if (t > 6) t -= 12; if (t < -5) t += 12; ref.update({ tr: t }); };
+$('trp').onclick = () => shiftTone(1); $('trm').onclick = () => shiftTone(-1);
+$('chtog').onclick = () => { showCh = !showCh; localStorage.setItem('sc_ch', showCh ? '1' : '0'); if (st) render(); };
+$('leave').onclick = () => {
+  if (ref) ref.off();
+  cancelAnimationFrame(raf); ref = null; st = null; shown = ''; shownV = ''; follow = true;
+  $('resync').classList.remove('on'); $('sheet').classList.remove('on');
+  history.replaceState(null, '', location.pathname + location.search);
+  fillRooms(); show('home');
+};
+
+// ingresso diretto da link #CODICE
+if (location.hash.length === 5) join(location.hash.slice(1));
+</script>
+</body>
+</html>
